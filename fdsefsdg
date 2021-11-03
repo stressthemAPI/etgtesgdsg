@@ -1,0 +1,74 @@
+for i = 1, 10 do
+       game.Players.LocalPlayer.MaximumSimulationRadius = math.pow(math.huge,math.huge)*math.huge
+       game.Players.LocalPlayer.SimulationRadius = math.pow(math.huge,math.huge)*math.huge
+--any physics manipulation, teleporting, adding rocket propulsion, etc
+end
+wait(1)
+local turds = game.workspace:GetDescendants()
+for i = 1, 10 do
+       game.Players.LocalPlayer.MaximumSimulationRadius = math.pow(math.huge,math.huge)*math.huge
+       game.Players.LocalPlayer.SimulationRadius = math.pow(math.huge,math.huge)*math.huge
+       game:GetService("RunService").Stepped:wait()
+       for i, v in ipairs(turds) do
+        if v:IsA('Part') and v.Anchored == false and v.Parent:FindFirstChild("Torso") == nil and v.Name ~= "Handle" then
+ v.CFrame = game.Players.LocalPlayer.Character.Head.CFrame + Vector3.new(0, 2.5, 0)
+     end
+    end
+    end
+wait(1)
+if not game:IsLoaded() then game.Loaded:Wait() end
+local PlayerInstance;
+local getgenv = getgenv or function() return _G end
+local gethiddenprop, sethiddenprop = (gethiddenproperty or get_hidden_property or gethiddenprop or get_hidden_prop), (sethiddenproperty or set_hidden_property or sethiddenprop or set_hidden_prop)
+local setsimulationrad = setsimulationradius or set_simulation_radius or function(Radius) sethiddenprop(PlayerInstance, "SimulationRadius", Radius) end
+if not getgenv or not gethiddenprop or not setsimulationrad then return false end -- Not supported
+if getgenv().NETWORKOWNER then getgenv().NETWORKOWNER:Disconnect() getgenv().NETWORKPLAYERCHECK:Disconnect() end
+
+-- Grab services
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+PlayerInstance = Players.LocalPlayer
+
+-- Optimize
+local inf = math.huge
+local PlayerList = {}
+for _, Plr in pairs(Players:GetPlayers()) do
+    if Plr ~= PlayerInstance then
+        PlayerList[#PlayerList + 1] = Plr
+    end
+end
+
+getgenv().NETWORKPLAYERCHECK = Players.PlayerAdded:Connect(function(Plr)
+    PlayerList[#PlayerList + 1] = Plr
+end)
+
+-- Configure network services
+settings().Physics.AllowSleep = false -- Keep the current physics system from sleeping. (Non-moving parts lose ownership.)
+settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.Disabled -- Keep the physics from throttling.
+PlayerInstance.ReplicationFocus = workspace
+
+-- Start network runtime
+getgenv().NETWORKOWNER = RunService.Stepped:Connect(function()
+    -- Revoke ownership from others
+    for _, Plr in pairs(PlayerList) do
+        sethiddenprop(Plr, "MaximumSimulationRadius", 0.01)
+        sethiddenprop(Plr, "SimulationRadius", 0.01)
+    end
+
+    -- Claim ownership for me
+    sethiddenprop(PlayerInstance, "MaximumSimulationRadius", inf)
+    setsimulationrad(inf)
+end)
+
+return true
+wait(1)
+game:GetService("RunService").RenderStepped:Connect(function()
+    sethiddenproperty(game.Players.LocalPlayer, "SimulationRadius", math.huge)
+end)
+wait(1)
+game:GetService("RunService").RenderStepped:Connect(function()
+    setsimulationradius(math.huge)
+end)
+wait(1)
+game:GetService("UserInputService").InputBegan:connect(function(input,gameProcessed)
+settings().Network.IncommingReplicationLag = settings().Network.IncommingReplicationLag - 1000.00
